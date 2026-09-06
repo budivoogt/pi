@@ -632,7 +632,7 @@ await loader.reload();
 const { session } = await createAgentSession({ resourceLoader: loader });
 ```
 
-Extensions can register tools, subscribe to events, add commands, and more. See [extensions.md](extensions.md) for the full API.
+Extensions can register tools, subscribe to events, add commands, and more. See [extensions.md](extensions.md) for the full API. To spawn a child session from an extension, pass `ctx.modelRuntime` into `createAgentSession({ modelRuntime })` so providers and runtime-only credentials stay shared.
 
 **Named inline extensions:** By default, inline factories display as `<inline:1>`, `<inline:2>`, etc. in the startup Extensions list. To show a descriptive name instead, wrap the factory:
 

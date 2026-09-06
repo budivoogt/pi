@@ -749,6 +749,10 @@ export class ExtensionRunner {
 				runner.assertActive();
 				return runner.modelRegistry;
 			},
+			get modelRuntime() {
+				runner.assertActive();
+				return runner.modelRegistry.modelRuntime;
+			},
 			get model() {
 				runner.assertActive();
 				return getModel();
