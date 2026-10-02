@@ -550,8 +550,18 @@ function applyModelsDevReasoningOptionMetadata(model: Model<Api>): void {
 	if (thinkingLevelMap) mergeThinkingLevelMap(model, thinkingLevelMap);
 }
 
-function getTogetherCompat(modelId: string, reasoning: boolean): OpenAICompletionsCompat {
+function getTogetherCompat(
+	modelId: string,
+	reasoning: boolean,
+	reasoningOptions: readonly ModelsDevReasoningOption[],
+): OpenAICompletionsCompat {
 	if (!reasoning) return TOGETHER_BASE_COMPAT;
+	if (
+		reasoningOptions.some((option) => option.type === "effort") &&
+		reasoningOptions.some((option) => option.type === "toggle")
+	) {
+		return TOGETHER_TOGGLE_REASONING_EFFORT_COMPAT;
+	}
 	if (TOGETHER_REASONING_EFFORT_MODELS.has(modelId)) return TOGETHER_REASONING_EFFORT_COMPAT;
 	if (TOGETHER_TOGGLE_REASONING_EFFORT_MODELS.has(modelId)) return TOGETHER_TOGGLE_REASONING_EFFORT_COMPAT;
 	if (TOGETHER_REASONING_ONLY_MODELS.has(modelId)) return TOGETHER_BASE_COMPAT;
@@ -561,8 +571,15 @@ function getTogetherCompat(modelId: string, reasoning: boolean): OpenAICompletio
 function getTogetherThinkingLevelMap(
 	modelId: string,
 	reasoning: boolean,
+	reasoningOptions: readonly ModelsDevReasoningOption[],
 ): NonNullable<Model<any>["thinkingLevelMap"]> | undefined {
 	if (!reasoning) return undefined;
+	const effortMap = getEffortThinkingLevelMap(reasoningOptions);
+	if (effortMap && reasoningOptions.some((option) => option.type === "toggle")) {
+		// Toggle models disable thinking independently of reasoning_effort.
+		delete effortMap.off;
+		return effortMap;
+	}
 	if (TOGETHER_REASONING_EFFORT_MODELS.has(modelId)) return { ...TOGETHER_REASONING_EFFORT_LEVEL_MAP };
 	if (TOGETHER_TOGGLE_REASONING_EFFORT_MODELS.has(modelId)) return { ...TOGETHER_DEEPSEEK_V4_THINKING_LEVEL_MAP };
 	if (TOGETHER_REASONING_ONLY_MODELS.has(modelId)) return { ...TOGETHER_FIXED_REASONING_LEVEL_MAP };
@@ -2197,7 +2214,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 				if (m.status === "deprecated") continue;
 
 				const reasoning = m.reasoning === true;
-				const thinkingLevelMap = getTogetherThinkingLevelMap(modelId, reasoning);
+				const thinkingLevelMap = getTogetherThinkingLevelMap(modelId, reasoning, m.reasoning_options ?? []);
 				models.push({
 					id: modelId,
 					name: m.name || modelId,
@@ -2213,7 +2230,7 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 						cacheRead: m.cost?.cache_read || 0,
 						cacheWrite: m.cost?.cache_write || 0,
 					},
-					compat: getTogetherCompat(modelId, reasoning),
+					compat: getTogetherCompat(modelId, reasoning, m.reasoning_options ?? []),
 					contextWindow: m.limit?.context || 4096,
 					maxTokens: m.limit?.output || 4096,
 				});
